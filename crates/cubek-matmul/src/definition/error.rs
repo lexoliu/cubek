@@ -1,7 +1,7 @@
 use cubecl::{
     CubeCount, CubeDim, VectorizationError,
-    features::Plane,
-    ir::{ElemType, Features},
+    features::{Features, Plane},
+    ir::ElemType,
     server::LaunchError,
 };
 use cubek_std::{InvalidConfigError, MatrixLayout};
