@@ -1,4 +1,9 @@
-use cubecl::{CubeCount, CubeDim, VectorizationError, ir::ElemType, server::LaunchError};
+use cubecl::{
+    CubeCount, CubeDim, VectorizationError,
+    features::Plane,
+    ir::{ElemType, Features},
+    server::LaunchError,
+};
 use cubek_std::{InvalidConfigError, MatrixLayout};
 use std::fmt::{Debug, Display};
 
@@ -21,6 +26,17 @@ impl From<LaunchError> for MatmulSetupError {
     fn from(value: LaunchError) -> Self {
         Self::Launch(value)
     }
+}
+
+/// Require cross-unit plane instructions only when a plane contains several units.
+pub(crate) fn require_plane_ops(
+    features: &Features,
+    plane_dim: usize,
+) -> Result<(), MatmulSetupError> {
+    if plane_dim > 1 && !features.plane.contains(Plane::Ops) {
+        return Err(MatmulAvailabilityError::PlaneOpsUnavailable.into());
+    }
+    Ok(())
 }
 
 /// A specific feature required for matmul is not available in the current runtime or hardware.
@@ -208,6 +224,34 @@ impl Debug for MatmulAvailabilityError {
                 f,
                 "Shared memory budget exceeded: kernel requests {requested} bytes, hardware allows {available} bytes per cube."
             ),
+        }
+    }
+}
+
+#[cfg(test)]
+mod plane_capability_tests {
+    use super::*;
+
+    #[test]
+    fn refuses_cross_unit_instructions_without_plane_ops() {
+        let features = Features::default();
+        for width in [4, 32, 128] {
+            assert!(matches!(
+                require_plane_ops(&features, width),
+                Err(MatmulSetupError::Unavailable(
+                    MatmulAvailabilityError::PlaneOpsUnavailable
+                ))
+            ));
+        }
+    }
+
+    #[test]
+    fn permits_scalar_cpu_and_supported_planes() {
+        let mut features = Features::default();
+        assert!(require_plane_ops(&features, 1).is_ok());
+        features.plane.insert(Plane::Ops);
+        for width in [4, 32, 128] {
+            assert!(require_plane_ops(&features, width).is_ok());
         }
     }
 }

@@ -7,7 +7,9 @@ use cubecl::{
 use cubek_std::{MatrixLayout, cube_count::HypercubeBlueprint};
 
 use crate::{
-    definition::{MatmulElems, MatmulProblem, MatmulSetupError, MatmulVectorSizes},
+    definition::{
+        MatmulElems, MatmulProblem, MatmulSetupError, MatmulVectorSizes, require_plane_ops,
+    },
     multi_level::{
         args::*,
         components::{
@@ -166,6 +168,7 @@ impl BatchMatmulFamily<()> for VecMatUnitPerpendicularFamily {
         }
 
         let plane_dim = client.properties().hardware.plane_size_max as usize;
+        require_plane_ops(&client.properties().features, plane_dim)?;
         if blueprint.tile_dim != plane_dim * vector_size {
             return Err(MatmulSetupError::InvalidConfig(Box::new(format!(
                 "Tile dim must equal plane_dim * vector_size, got {:?} != {:?} * {:?}",
