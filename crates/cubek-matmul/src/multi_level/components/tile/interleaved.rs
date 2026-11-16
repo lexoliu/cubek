@@ -2,7 +2,7 @@ use cubecl::{features::MmaConfig, ir::DeviceProperties, prelude::*};
 use cubek_std::{InvalidConfigError, MatrixLayout};
 
 use crate::{
-    definition::{MatmulElems, MatmulSetupError, MatmulVectorSizes},
+    definition::{MatmulElems, MatmulSetupError, MatmulVectorSizes, require_plane_ops},
     multi_level::{
         CubeDimResource, TileSize,
         definition::BatchMatmulBlueprint,
@@ -110,6 +110,7 @@ impl TileVariant for InterleavedMatmul {
         vector_sizes: &MatmulVectorSizes,
     ) -> Result<(), MatmulSetupError> {
         check_types_available(client, dtypes, false)?;
+        require_plane_ops(&client.properties().features, blueprint.plane_dim as usize)?;
 
         let m = blueprint.tiling_scheme.tile_size.m();
         let n = blueprint.tiling_scheme.tile_size.n();
